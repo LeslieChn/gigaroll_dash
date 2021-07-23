@@ -41,9 +41,12 @@
     "gulp-autoprefixer": "^7.0.1",
     "gulp-clean": "^0.4.0",
     "gulp-install": "^1.1.0",
+    "gulp-open": "^3.0.1",
     "gulp-sass": "^4.1.0",
-    "gulp-sourcemaps": "^2.6.5",
-    "gulp-open": "^3.0.1"
+    "gulp-sourcemaps": "^2.6.5"
   },
-  "homepage": "http://creative-tim.com/product/soft-ui-dashboard"
+  "homepage": "http://creative-tim.com/product/soft-ui-dashboard",
+  "dependencies": {
+    "live-server": "^1.2.1"
+  }
 }

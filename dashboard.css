@@ -1,0 +1,15 @@
+/* #map {
+  height: 200px;
+} */
+
+body
+{
+    overflow: hidden;
+}
+
+.w2ui-grid-records
+{
+    overflow: hidden !important;
+    touch-action: auto;
+} 
+
