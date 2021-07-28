@@ -27,6 +27,15 @@ let req3 =
   filters: []
 }
 
+let req4 =
+{
+  qid: "MD_AGG",
+  base_dim: 'property',
+  groupbys: ['?gby_option'],
+  measures: ['?val_option'],
+  filters: []
+}
+
 let chart_def = [
   {
     yAxisID: "left",
@@ -61,7 +70,8 @@ let page_def=[
 // {tile_config: {header: `this is row 0`, subheader: `this is column 0`}}],
 [{id:'line-chart1', view_type:'chart',  view_subtype:'lineChart', request: req3, dropdowns:dropdowns, chart_def: chart_def, tile_config: {header: `Line Chart`, subheader: `this is a Line Chart`, height:'300px', width:6}},
 {id:'line-chart2', view_type:'chart', view_subtype:'lineChart', request: req2, chart_def: chart_def, tile_config: {header: `Bar Chart`, subheader: `this is a Bar Chart`, height:'300px', width:6}},
-{id:'grid2', view_type:'grid', request: req1,  tile_config: {header: `Grid2`, subheader: `This is a Grid2`, height:'300px', width:6}}]
+{id:'grid2', view_type:'grid', request: req1,  tile_config: {header: `Grid2`, subheader: `This is a Grid2`, height:'300px', width:6}},
+{id:'treemap1', view_type:'treemap', request: req4, dropdowns:dropdowns,  tile_config: {header: `Treemap`, subheader: `This is a Treemap`, height:'300px', width:6}}]
 ]
 
 let row_id=0

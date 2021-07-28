@@ -19379,7 +19379,12 @@ fieldset:disabled .btn {
 
 .card {
   /* box-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05); */
+  box-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.10); 
+}
+
+.card:hover:not([data-maximized='true']) {
   box-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.20); 
+  margin-top: -5px;
 }
 
 .card .card-header {
@@ -20676,7 +20681,7 @@ hr.horizontal.gray-light {
   color: #344767;
   padding: 0.5rem 1rem;
   font-weight: 400;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .navbar.navbar-absolute {
@@ -23165,7 +23170,7 @@ h4,
 }
 
 a {
-  letter-spacing: -0.025rem;
+  letter-spacing: 0rem;
   color: #344767;
 }
 

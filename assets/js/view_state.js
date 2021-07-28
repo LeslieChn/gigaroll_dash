@@ -192,19 +192,21 @@ class View_State
     $('.content').height('65vh')
     $(`#${this.getId()}-box`).attr('class', 'col-lg-12')
     this.maximized=true
+    $(`#${this.getId()}-card`).attr('data-maximized', true)
+    $('.content').height('65vh')
     this.refresh()
   }
   restore()
   {
     let id=this.getId()
     this.maximized=false
+    $(`#${this.getId()}-card`).attr('data-maximized', false)
     $(`#${id}-box`).attr('class', `col-lg-${this.getWidth()} mt-4`)
     $('.content').height(this.getHeight())
     if (this.state.view_type=='chart')
     {
       $(`#${this.getId()}`).height(this.getHeight())
     }
-    this.refresh()
     this.show()
   }
   refresh()
@@ -232,6 +234,9 @@ class View_State
           dataset.backgroundColor=chartColorGradient(canvas, bg_color)
         });
         this_chart.update()
+        break
+      case 'treemap':
+        this.createContent()
         break
     }
   }
@@ -261,7 +266,7 @@ class View_State
     let cfg=this.state.tile_config
     
     $(cfg.parent_div).append(`<div id="${this.getId()}-box" class="col-lg-${cfg.width} mt-4">
-      <div class="card z-index-2">
+      <div id="${this.getId()}-card" class="card z-index-2" data-maximized="false">
         <div class="card-header pb-0">
           <div class="row">
             <div class="col-4">
@@ -294,7 +299,7 @@ class View_State
         </div>
         </div>
          <div class="card-body p-3">
-            <${this.state.view_type=='chart'?'canvas':'div'} id="${this.getId()}" class="content" style="width: 100%; height:${cfg.height};">
+            <${this.state.view_type=='chart'?'canvas':'div'} id="${this.getId()}" class="content" style="width:100%; height:${cfg.height};">
           </div>
         </div>
       </div>
@@ -411,6 +416,8 @@ class View_State
     
     if(this.maximized)
       $('.content').height('65vh')
+    else
+      $('.content').height('300px')
 
     let req=this.state.request
     let vs_id=this.getId()
@@ -516,75 +523,111 @@ class View_State
       },
     });
   }
-  barChart(){
-    $(`#${this.getId()}`).replaceWith(`<div class="chart bg-gradient-dark border-radius-lg"><canvas id="${this.getId()}" class="chart-canvas" height="300"></canvas></div>`);
+  async getTreeMapData()
+  {
+    await this.serverRequest()
 
-    var ctx = document.getElementById(this.getId()).getContext("2d");
+    let server_js=this.server_js
 
-    this.object_instance = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-        datasets: [{
-          label: "Sales",
-          tension: 0.4,
-          borderWidth: 0,
-          borderRadius: 4,
-          borderSkipped: false,
-          backgroundColor: "#fff",
-          data: [450, 200, 100, 220, 500, 100, 400, 230, 500],
-          maxBarThickness: 6
-        }, ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false,
-          }
-        },
-        interaction: {
-          intersect: false,
-          mode: 'index',
-        },
-        scales: {
-          y: {
-            grid: {
-              drawBorder: false,
-              display: false,
-              drawOnChartArea: false,
-              drawTicks: false,
-            },
-            ticks: {
-              suggestedMin: 0,
-              suggestedMax: 500,
-              beginAtZero: true,
-              padding: 15,
-              font: {
-                size: 14,
-                family: "Open Sans",
-                style: 'normal',
-                lineHeight: 2
-              },
-              color: "#fff"
-            },
-          },
-          x: {
-            grid: {
-              drawBorder: false,
-              display: false,
-              drawOnChartArea: false,
-              drawTicks: false
-            },
-            ticks: {
-              display: false
-            },
-          },
-        },
-      },
-    });
+    let vs_id=this.getId();
+    let req=this.state.request;
+    let gby_headers=itemSubstitute(req.groupbys, vs_id);
+    let val_headers=itemSubstitute(req.measures, vs_id);
+  
+    let root = gby_headers[0]
+    let data = [{id:root, value:0}]
+    let nodes = new Set()
+
+    
+    let n_rows = server_js.length
+
+    let ng = server_js[0][0].length - 1
+
+    for (let r = 0; r < n_rows; ++r )
+    {
+      let row = server_js[r]
+      let gby = row[0]
+      let val = row[1][0]
+      let str = root
+      for (let i = 0; i< gby.length; ++i)
+      {
+        let g2 = gby[i].replace(/\./g, '')
+        str += '.' + g2
+        if (i < ng && !nodes.has(str))
+        {
+          data.push( { id:str , value: 0});
+          nodes.add(str);
+        } 
+      }
+      data.push( { id:str , value: val});
+    }
+  
+    return data;
   }
+  async treemap()
+  {
+    $(`#${this.getId()}`).html(`<div id="tmap-${this.getId()}" style="position:absolute;"></div>`)
+    let ht=$(`#${this.getId()}`).parent().height();
+    var parent_width = $(`#${this.getId()}`).parent().width();
+    var width = Math.round(parent_width*0.67);
+    var height = Math.round(ht);
+    var margin = Math.round((parent_width - width)/2)
+
+    var format = d3.format(",d");
+
+    var color = d3.scaleOrdinal()
+      .range(d3.schemeCategory20
+          .map(function(c) { c = d3.rgb(c); c.opacity = 0.8; return c; }));
+
+    var stratify = d3.stratify()
+      .parentId(function(d) { return d.id.substring(0, d.id.lastIndexOf(".")); });
+
+    var treemap = d3.treemap()
+      .size([width, height])
+      .padding(1)
+      .round(true);
+
+    let data = await this.getTreeMapData();
+    var root = stratify(data)
+        .sum(function(d) { return d.value; })
+        .sort(function(a, b) { return b.height - a.height || b.value - a.value; });
+
+    treemap(root);
+    d3.select(`#tmap-${this.getId()}`)
+      .html("")
+
+    d3.select(`#tmap-${this.getId()}`)
+      .selectAll(".node")
+      .data(root.leaves())
+      .enter().append("div")
+        .attr("class", "node")
+        .attr("title", function(d) 
+        { 
+          return d.id.substring(d.id.indexOf(".") + 1) + "\n" + format(d.value); 
+        })
+        .style("left", function(d) { return d.x0 + margin + "px"; })
+        .style("top", function(d) { return d.y0 + "px"; })
+        .style("width", function(d) { return d.x1 - d.x0 + "px"; })
+        .style("height", function(d) { return d.y1 - d.y0 + "px"; })
+        .style("background", function(d) { while (d.depth > 1) d = d.parent; return color(d.id); })
+      .append("div")
+        .attr("class", "node-label")
+        .text(function(d) 
+        { 
+          let s = d.id.substring(d.id.indexOf(".") + 1).replace(/\./g, "\n")//.split(/(?=[A-Z][^A-Z])/g).join("\n"); 
+          return s;
+        })
+      .append("div")
+        .attr("class", "node-value")
+        .text(function(d) { return format(d.value); });
+      
+
+    function type(d) {
+    d.value = +d.value;
+    return d;
+    }
+      
+    }
 }//end of Class definition
 
 function initMap (){
