@@ -83,6 +83,8 @@ function itemSubstitute(a_in, vs_id) {
   return a_out;
 }
 
+
+
 function chartColorGradient(canvas, bg_color){
   let ctx2 = canvas.getContext("2d");
   let gradientStroke = ctx2.createLinearGradient(0, canvas.scrollHeight, 0, 50);
@@ -128,8 +130,29 @@ function hexToRGB(hex, alpha) {
   }
 }
 
+function zoomed()
+{
+    g.style("stroke-width", 1.5 / d3.event.transform.k + "px");
+    // g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")"); // not in d3 v4
+    g.attr("transform", d3.event.transform); // updated for d3 v4
+}
+
+function stopped()
+{
+    if (d3.event.defaultPrevented) d3.event.stopPropagation();
+}
+function reset()
+{
+    active.classed("active", false);
+    active = d3.select(null);
+
+    svg.transition()
+        .duration(750)
+        // .call( zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1) ); // not in d3 v4
+        .call(zoom.transform, d3.zoomIdentity); // updated for d3 v4
+}
 /*******************************************************************************/
-class View_State 
+class View_State
 {
   constructor(state)
   {
@@ -236,11 +259,14 @@ class View_State
         this_chart.update()
         break
       case 'treemap':
+      case 'countymap':
         this.createContent()
         break
+        
     }
   }
-  createDropdownList(contents){
+  createDropdownList(contents)
+  {
     let list=''
     for (let i=0; i<contents.length; ++i){
       let item=contents[i]
@@ -248,14 +274,15 @@ class View_State
     }
     return list
   }
-  createDropdowns(){
+  createDropdowns()
+  {
     if ('dropdowns' in this.state == false)
       return ''
     let dropdowns=this.state.dropdowns
     let dropdown_html=''
     for (const [id, def] of Object.entries(dropdowns))
     {
-      dropdown_html+=`<div class="col ps-0 text-center"><h6 class="mb-1">${id=="gby_option"?"Groupbys":id=="val_option"?"Measures":null}</h6><select id=${id}-${this.getId()} class="form-select form-select-sm pt-0" data-tile-id="${this.getId()}" aria-label=".form-select-sm example">
+      dropdown_html+=`<div class="col ps-0 text-center"><h6 class="mb-1">${def.name}</h6><select id=${id}-${this.getId()} class="form-select form-select-sm pt-0" data-tile-id="${this.getId()}" aria-label=".form-select-sm example">
       ${this.createDropdownList(def.contents)}
       </select></div>`
     }
@@ -307,34 +334,62 @@ class View_State
 
      this.createContent()
   }
-  createContent() {
-    try{
+  getColorScheme()
+  {
+    var color_schemes = {"red": d3.interpolateYlOrRd,
+                        "blue": d3.interpolateBlues,
+                        "green": d3.interpolateYlGn,
+                        "grey": d3.interpolateGreys}
+
+    let color_scheme = this.state.color_scheme
+    let color = ""
+    if(color_scheme.startsWith('?'))
+    {
+      let dd_id = color_scheme.slice(1)
+      color = $(`#${dd_id}-${this.getId()}`).val()
+    }
+    else
+    {
+      color = color_scheme
+    }
+    return color_schemes[color]
+  }
+  createContent()
+  {
+    try
+    {
       this[this.state.view_type]()
     }
-    catch (e){
-
+    catch (e)
+    {
+      console.log(e)
     }
   }
 
-   text()
-   {
-    $(`#${this.getId()}`).append(`<h5 class="font-weight-bolder">Gigaroll Dashboard</h5><p class="text-lg">${this.state.text}</p>`)
-   }
-   googlemap()
+  text()
   {
-    try{
-    let map = new google.maps.Map(document.getElementById(this.getId()), {
-      fullscreenControl: false,
-      zoom: 8,
-      center: { lat: 50, lng: 50 },
-      gestureHandling: "cooperative",
-    });
+   $(`#${this.getId()}`).append(`<h5 class="font-weight-bolder">Gigaroll Dashboard</h5><p class="text-lg">${this.state.text}</p>`)
+  }
+
+  googlemap()
+  {
+    try
+    {
+      let map = new google.maps.Map(document.getElementById(this.getId()), {
+        fullscreenControl: false,
+        zoom: 8,
+        center: { lat: 50, lng: 50 },
+        gestureHandling: "cooperative",
+      });
     }
     catch(e)
-    {console.log(e)}
-
+    {
+      console.log(e)
+    }
   }
-  async grid(){
+
+  async grid()
+  {
 
     await this.serverRequest()
 
@@ -396,6 +451,7 @@ class View_State
     catch(e)
     {console.log(e)}
   }
+
   chart()
   {
     try{
@@ -405,6 +461,7 @@ class View_State
 
     }
   }
+  
   async lineChart()
   {
     await this.serverRequest()
@@ -523,6 +580,7 @@ class View_State
       },
     });
   }
+  
   async getTreeMapData()
   {
     await this.serverRequest()
@@ -564,8 +622,9 @@ class View_State
   
     return data;
   }
-  async treemap()
-  {
+
+  async treemap(){
+  
     $(`#${this.getId()}`).html(`<div id="tmap-${this.getId()}" style="position:absolute;"></div>`)
     let ht=$(`#${this.getId()}`).parent().height();
     var parent_width = $(`#${this.getId()}`).parent().width();
@@ -622,12 +681,229 @@ class View_State
         .text(function(d) { return format(d.value); });
       
 
-    function type(d) {
-    d.value = +d.value;
-    return d;
+      function type(d) {
+        d.value = +d.value;
+        return d;
+      }
+  }
+
+  async getCountyData(){
+    let state_code_from_name =
+    { CT: "09", NY: "36", NJ: "34", MA: "25" }
+    let name_from_state_code =
+    { "09": "CT", "36": "NY", "34": "NJ", "25": "MA" }
+
+    await this.serverRequest()
+    let server_js = this.server_js
+
+    let value_idx = 0
+    let min = Infinity, max = -Infinity
+    let lut = {}
+    for (let row of server_js)
+    {
+        let c = row[0][0]
+        let state = c.substring(c.length - 2)
+        let county = c.substring(0, c.length - 3)
+        let code = state_code_from_name[state]
+        if (lut[code] == null)
+        {
+            lut[code] = {}
+        }
+        let value = row[1][value_idx]
+        max = Math.max(value, max)
+        min = Math.min(value, min)
+        lut[code][county] = value
     }
-      
+    return { lut: lut, max: max, min: min }
+
+  }
+
+  async countymap()
+  {
+    let result = await this.getCountyData();
+
+    let county_data = result.lut;
+    let max_data = result.max;
+    let min_data = result.min;
+    let first_map_draw = true
+    let state_codes = new Set(["09", "34", "36"])
+    var g = null;
+    var path = null;
+    var svg = null;
+    var zoom = null;
+    var tooltipDiv = null;
+    let colors = [];
+    let num_colors = 12;
+    let scheme = this.getColorScheme();
+
+    for (let i = 0; i <= num_colors; ++i)
+        colors.push(scheme(i / num_colors));
+
+    let domain = [],
+        m1,
+        m2;
+    if (min_data <= 0 && max_data <= 0)
+    {
+        m1 = min_data == 0 ? -1 : min_data + 0.5;
+        m2 = max_data == 0 ? -1 : max_data;
+        let r = (m2 / m1) ** (1 / (num_colors));
+
+        for (let x = m1; x <= m2; x *= r)
+            domain.push(x);
     }
+    else if (min_data >= 0 && max_data >= 0) 
+    {
+        m1 = min_data == 0 ? 1 : min_data + 0.5;
+        m2 = max_data == 0 ? 1 : max_data;
+        let r = (m2 / m1) ** (1 / (num_colors));
+
+        for (let x = m1; x <= m2; x *= r)
+            domain.push(x);
+    }
+    else 
+    {
+        m1 = min_data;
+        m2 = max_data;
+
+        domain.push(min_data + 0.5);
+        let r = max_data ** (1 / (num_colors - 1));
+
+        for (let x = 1; x <= max_data; x *= r)
+            domain.push(x);
+    }
+    var color = d3
+        .scaleThreshold()
+        .domain(domain)
+        .range(colors);
+
+    // let height=$(`#${this.getId()}`).height();
+    // let width=$(`#${this.getId()}`).width();
+     var width = $(`#${this.getId()}`).parent().width(),
+         height = $(`#${this.getId()}`).parent().height();
+    //     active = d3.select(null);
+    
+    if (first_map_draw)
+    {
+        first_map_draw = false;
+        zoom = d3
+            .zoom()
+            // no longer in d3 v4 - zoom initialises with zoomIdentity, so it's already at origin
+            // .translate([0, 0])
+            // .scale(1)
+            .scaleExtent([1, 32])
+            .on("zoom", zoomed);
+
+        path = d3
+            .geoPath() // updated for d3 v4
+            .projection(null);
+
+        //d3.select('#d3map').html('')
+        d3.select(`#${this.getId()}`)
+        .html("")
+
+        svg = d3
+            .select(`#${this.getId()}`)
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .on("click", stopped, true);
+
+        svg
+            .append("rect")
+            .attr("class", "background")
+            .attr("width", width)
+            .attr("height", height)
+            .on("click", reset);
+
+        g = svg.append("g");
+
+        svg.call(zoom); // delete this line to disable free zooming
+        // .call(zoom.event); // not in d3 v4
+    }
+
+    d3.json("./assets/data/map_us_counties.json", function (error, us)
+    {
+        if (error) throw error;
+
+        us.transform.scale[0] *= 4.0;
+        us.transform.scale[1] *= 4.0;
+
+        us.transform.translate[0] -= 2800;
+        us.transform.translate[1] -= 400;
+
+        let states = topojson.feature(us, us.objects.states).features;
+        let states_filtered = states.filter((d) => state_codes.has(d.id));
+        let county_features = topojson.feature(us, us.objects.counties).features;
+        let county_filtered = county_features.filter((d) =>
+            state_codes.has(d.id.substring(0, 2)))
+
+        g.selectAll("path")
+            .data(states_filtered)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("class", "feature");
+
+        g.append("path")
+            .datum(
+                topojson.mesh(us, us.objects.states, function (a, b)
+                {
+                    if (!state_codes.has(a.id) && !state_codes.has(b.id))
+                        return false;
+                    else
+                        return true;
+                })
+            )
+            .attr("class", "mesh")
+            .attr("d", path);
+
+
+        g.append("g")
+            .attr("class", "counties")
+            .selectAll("path")
+            .data(county_filtered)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("style", function (d)
+            {
+                let code = d.id.substring(0, 2);
+                if (!state_codes.has(code))
+                {
+                    return "fill: #000";
+                }
+                let s = parseInt(code);
+                let county = d.properties.name;
+                let value = county_data[code][county];
+
+                return `fill:${color(value)}; `;
+
+            })
+            /* .on("click", clicked)
+            .on("mouseover", hovered)
+            .on("mousemove", moved)
+            .on("mouseout", mouseOuted); */
+    
+
+    g.append("path")
+        .attr("class", "county-borders")
+        .attr(
+            "d",
+            path(
+                topojson.mesh(us, us.objects.counties, function (a, b)
+                {
+                    let aCode = a.id.substring(0, 2);
+                    let bCode = b.id.substring(0, 2);
+
+                    if (!state_codes.has(aCode) || !state_codes.has(bCode))
+                        return false;
+                    else return a !== b;
+                })
+            )
+        );
+    });
+  }
+  
 }//end of Class definition
 
 function initMap (){
