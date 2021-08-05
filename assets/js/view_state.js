@@ -149,7 +149,7 @@ function reset()
     svg.transition()
         .duration(750)
         // .call( zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1) ); // not in d3 v4
-        .call(zoom.transform, d3.zoomIdentity); // updated for d3 v4
+        // .call(zoom.transform, d3.zoomIdentity); // updated for d3 v4
 }
 /*******************************************************************************/
 class View_State
@@ -781,21 +781,24 @@ class View_State
      var width = $(`#${this.getId()}`).parent().width(),
          height = $(`#${this.getId()}`).parent().height();
     //     active = d3.select(null);
-    
+
     if (first_map_draw)
     {
         first_map_draw = false;
-        zoom = d3
-            .zoom()
-            // no longer in d3 v4 - zoom initialises with zoomIdentity, so it's already at origin
-            // .translate([0, 0])
-            // .scale(1)
-            .scaleExtent([1, 32])
-            .on("zoom", zoomed);
+        // zoom = d3
+        //     .zoom()
+        //     // no longer in d3 v4 - zoom initialises with zoomIdentity, so it's already at origin
+        //     // .translate([0, 0])
+        //     // .scale(1)
+        //     .scaleExtent([1, 32])
+        //     .on("zoom", zoomed);
 
+        var projection = d3.geoAlbersUsa();
+        
         path = d3
             .geoPath() // updated for d3 v4
-            .projection(null);
+            .projection(projection);
+
 
         //d3.select('#d3map').html('')
         d3.select(`#${this.getId()}`)
@@ -817,25 +820,21 @@ class View_State
 
         g = svg.append("g");
 
-        svg.call(zoom); // delete this line to disable free zooming
+        // svg.call(zoom); // delete this line to disable free zooming
         // .call(zoom.event); // not in d3 v4
     }
 
-    d3.json("./assets/data/map_us_counties.json", function (error, us)
+    d3.json("./assets/data/map_county_us.json", function (error, us)
     {
         if (error) throw error;
-
-        us.transform.scale[0] *= 4.0;
-        us.transform.scale[1] *= 4.0;
-
-        us.transform.translate[0] -= 2800;
-        us.transform.translate[1] -= 400;
-
         let states = topojson.feature(us, us.objects.states).features;
         let states_filtered = states.filter((d) => state_codes.has(d.id));
+        let stategeo = {"type":"FeatureCollection","features":states_filtered};
         let county_features = topojson.feature(us, us.objects.counties).features;
         let county_filtered = county_features.filter((d) =>
-            state_codes.has(d.id.substring(0, 2)))
+            state_codes.has(d.id.substring(0, 2)));
+
+        projection.fitSize([width - 20, height - 20], stategeo);
 
         g.selectAll("path")
             .data(states_filtered)
@@ -875,32 +874,30 @@ class View_State
                 let s = parseInt(code);
                 let county = d.properties.name;
                 let value = county_data[code][county];
-
                 return `fill:${color(value)}; `;
-
             })
-            /* .on("click", clicked)
+            .on("click", clicked)
             .on("mouseover", hovered)
             .on("mousemove", moved)
-            .on("mouseout", mouseOuted); */
+            .on("mouseout", mouseOuted);
     
 
-    g.append("path")
-        .attr("class", "county-borders")
-        .attr(
-            "d",
-            path(
-                topojson.mesh(us, us.objects.counties, function (a, b)
-                {
-                    let aCode = a.id.substring(0, 2);
-                    let bCode = b.id.substring(0, 2);
+          g.append("path")
+              .attr("class", "county-borders")
+              .attr(
+                  "d",
+                  path(
+                      topojson.mesh(us, us.objects.counties, function (a, b)
+                      {
+                          let aCode = a.id.substring(0, 2);
+                          let bCode = b.id.substring(0, 2);
 
-                    if (!state_codes.has(aCode) || !state_codes.has(bCode))
-                        return false;
-                    else return a !== b;
-                })
-            )
-        );
+                          if (!state_codes.has(aCode) || !state_codes.has(bCode))
+                              return false;
+                          else return a !== b;
+                      })
+                  )
+          );
     });
   }
   
