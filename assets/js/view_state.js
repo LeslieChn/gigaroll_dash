@@ -776,65 +776,50 @@ class View_State
         .domain(domain)
         .range(colors);
 
-    // let height=$(`#${this.getId()}`).height();
-    // let width=$(`#${this.getId()}`).width();
-     var width = $(`#${this.getId()}`).parent().width(),
-         height = $(`#${this.getId()}`).parent().height();
-    //     active = d3.select(null);
+    var width = $(`#${this.getId()}`).parent().width(),
+        height = $(`#${this.getId()}`).parent().height();
 
     if (first_map_draw)
     {
-        first_map_draw = false;
-        // zoom = d3
-        //     .zoom()
-        //     // no longer in d3 v4 - zoom initialises with zoomIdentity, so it's already at origin
-        //     // .translate([0, 0])
-        //     // .scale(1)
-        //     .scaleExtent([1, 32])
-        //     .on("zoom", zoomed);
+      first_map_draw = false;
 
-        var projection = d3.geoAlbersUsa();
-        
-        path = d3
-            .geoPath() // updated for d3 v4
-            .projection(projection);
+      var projection = d3.geoIdentity().reflectY(false);
+      
+      path = d3
+          .geoPath() // updated for d3 v4
+          .projection(projection);
 
+      d3.select(`#${this.getId()}`)
+      .html("")
 
-        //d3.select('#d3map').html('')
-        d3.select(`#${this.getId()}`)
-        .html("")
+      svg = d3
+          .select(`#${this.getId()}`)
+          .append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .on("click", stopped, true);
 
-        svg = d3
-            .select(`#${this.getId()}`)
-            .append("svg")
-            .attr("width", width)
-            .attr("height", height)
-            .on("click", stopped, true);
+      svg
+          .append("rect")
+          .attr("class", "background")
+          .attr("width", width)
+          .attr("height", height)
+          .on("click", reset);
 
-        svg
-            .append("rect")
-            .attr("class", "background")
-            .attr("width", width)
-            .attr("height", height)
-            .on("click", reset);
-
-        g = svg.append("g");
-
-        // svg.call(zoom); // delete this line to disable free zooming
-        // .call(zoom.event); // not in d3 v4
+      g = svg.append("g");
     }
 
-    d3.json("./assets/data/map_county_us.json", function (error, us)
+    d3.json("./assets/data/map_us_counties.json", function (error, us)
     {
         if (error) throw error;
         let states = topojson.feature(us, us.objects.states).features;
         let states_filtered = states.filter((d) => state_codes.has(d.id));
-        let stategeo = {"type":"FeatureCollection","features":states_filtered};
+        let geoScope = {"type":"FeatureCollection","features":states_filtered};
         let county_features = topojson.feature(us, us.objects.counties).features;
         let county_filtered = county_features.filter((d) =>
             state_codes.has(d.id.substring(0, 2)));
 
-        projection.fitSize([width - 20, height - 20], stategeo);
+        projection.fitSize([width - 20, height - 20], geoScope);
 
         g.selectAll("path")
             .data(states_filtered)
@@ -876,10 +861,10 @@ class View_State
                 let value = county_data[code][county];
                 return `fill:${color(value)}; `;
             })
-            .on("click", clicked)
-            .on("mouseover", hovered)
-            .on("mousemove", moved)
-            .on("mouseout", mouseOuted);
+            // .on("click", clicked)
+            // .on("mouseover", hovered)
+            // .on("mousemove", moved)
+            // .on("mouseout", mouseOuted);
     
 
           g.append("path")
