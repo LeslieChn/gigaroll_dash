@@ -777,7 +777,8 @@ class View_State
         .range(colors);
 
     var width = $(`#${this.getId()}`).parent().width(),
-        height = $(`#${this.getId()}`).parent().height();
+        height = $(`#${this.getId()}`).parent().height(),
+        centered;
 
     if (first_map_draw)
     {
@@ -804,11 +805,13 @@ class View_State
           .attr("class", "background")
           .attr("width", width)
           .attr("height", height)
-          .on("click", reset);
+          .on("click", mapReset);
 
       g = svg.append("g");
     }
+    function mapReset(){
 
+    }
     d3.json("./assets/data/map_us_counties.json", function (error, us)
     {
         if (error) throw error;
@@ -861,12 +864,10 @@ class View_State
                 let value = county_data[code][county];
                 return `fill:${color(value)}; `;
             })
-            // .on("click", clicked)
+            .on("click", clicked)
             // .on("mouseover", hovered)
             // .on("mousemove", moved)
             // .on("mouseout", mouseOuted);
-    
-
           g.append("path")
               .attr("class", "county-borders")
               .attr(
@@ -883,6 +884,38 @@ class View_State
                       })
                   )
           );
+          function mapReset(){
+
+          }
+          function clicked(d) {
+            centered = centered !== d && d;
+            console.log(d)
+            console.log(centered)
+
+            var paths = svg.selectAll("path")
+              .classed("active", d => d === centered);
+
+            var t0 = projection.translate(),
+              s0 = projection.scale();
+
+            projection.fitSize([width - 20, height - 20], centered || geoScope);
+
+            var interpolateTranslate = d3.interpolate(t0, projection.translate()),
+            interpolateScale = d3.interpolate(s0, projection.scale());
+
+            var interpolator = function(t) {
+              projection.scale(interpolateScale(t))
+                .translate(interpolateTranslate(t));
+              paths.attr("d", path);
+            }; 
+        
+            d3.transition()
+              .duration(750)
+              .tween("projection", function() {
+               return interpolator;
+            });
+          }
+
     });
   }
   
