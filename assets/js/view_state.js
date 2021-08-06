@@ -690,8 +690,7 @@ class View_State
   async getCountyData(){
     let state_code_from_name =
     { CT: "09", NY: "36", NJ: "34", MA: "25" }
-    let name_from_state_code =
-    { "09": "CT", "36": "NY", "34": "NJ", "25": "MA" }
+
 
     await this.serverRequest()
     let server_js = this.server_js
@@ -730,11 +729,15 @@ class View_State
     var g = null;
     var path = null;
     var svg = null;
-    var zoom = null;
-    var tooltipDiv = null;
     let colors = [];
     let num_colors = 12;
+    let geoScope = null;
     let scheme = this.getColorScheme();
+    var tooltipDiv = d3.select("#d3map").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+    let name_from_state_code =
+    { "09": "CT", "36": "NY", "34": "NJ", "25": "MA" }
 
     for (let i = 0; i <= num_colors; ++i)
         colors.push(scheme(i / num_colors));
@@ -778,7 +781,8 @@ class View_State
 
     var width = $(`#${this.getId()}`).parent().width(),
         height = $(`#${this.getId()}`).parent().height(),
-        centered;
+        centered,
+        dd;
 
     if (first_map_draw)
     {
@@ -806,12 +810,13 @@ class View_State
           .attr("width", width)
           .attr("height", height)
           .on("click", mapReset);
-
+      
       g = svg.append("g");
     }
-    function mapReset(){
 
-    }
+
+
+    
     d3.json("./assets/data/map_us_counties.json", function (error, us)
     {
         if (error) throw error;
@@ -864,8 +869,8 @@ class View_State
                 let value = county_data[code][county];
                 return `fill:${color(value)}; `;
             })
-            .on("click", clicked)
-            // .on("mouseover", hovered)
+            .on("click", mapClicked)
+            .on("mouseover", hovered)
             // .on("mousemove", moved)
             // .on("mouseout", mouseOuted);
           g.append("path")
@@ -884,25 +889,22 @@ class View_State
                       })
                   )
           );
-          function mapReset(){
-
-          }
-          function clicked(d) {
+          function mapClicked(d) {
             centered = centered !== d && d;
             console.log(d)
             console.log(centered)
-
+      
             var paths = svg.selectAll("path")
               .classed("active", d => d === centered);
-
+      
             var t0 = projection.translate(),
               s0 = projection.scale();
-
+      
             projection.fitSize([width - 20, height - 20], centered || geoScope);
-
+      
             var interpolateTranslate = d3.interpolate(t0, projection.translate()),
             interpolateScale = d3.interpolate(s0, projection.scale());
-
+      
             var interpolator = function(t) {
               projection.scale(interpolateScale(t))
                 .translate(interpolateTranslate(t));
@@ -915,8 +917,46 @@ class View_State
                return interpolator;
             });
           }
-
+          function hovered(d)
+          { 
+            let code = d.id.substring(0, 2)
+            let state = name_from_state_code[code]
+            if (!state_codes.has(code))
+                return
+      
+            let county = d.properties.name
+            let value = county_data[code][county]
+            // let idx = color.range().indexOf(color(value))
+            // let rect_id = `#rect_${idx}`
+      
+            // let x = parseInt(d3.select(rect_id).attr("x"))
+            // let height = parseInt(d3.select(rect_id).attr("height"))
+            // let width = parseInt(d3.select(rect_id).attr("width"))
+            
+            // var g = svg.append("g")
+            // .attr("transform", "translate(0,40)");
+            
+            // d3.select(".key")
+            //     .append("line")   
+            //     .attr("id", "overline")
+            //     .attr("x1", x)
+            //     .attr("y1", -5)
+            //     .attr("x2", x + width)
+            //     .attr("y2", -5)
+            //     .attr("style", `stroke:black;stroke-width:4`)  
+            console.log
+            tooltipDiv
+                .style("opacity", 0.9);
+            tooltipDiv.html(`${county} ${state} <br> ${value}`)
+                .style("left", (d3.event.layerX + 20) + "px")
+                .style("top", (d3.event.layerY + 20) + "px");
+          }      
     });
+    
+    function mapReset(){
+      console.log("reset")
+      ddddd
+    }
   }
   
 }//end of Class definition
