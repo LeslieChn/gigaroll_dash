@@ -375,12 +375,19 @@ class View_State
   {
     try
     {
-      let map = new google.maps.Map(document.getElementById(this.getId()), {
-        fullscreenControl: false,
-        zoom: 8,
-        center: { lat: 50, lng: 50 },
-        gestureHandling: "cooperative",
+      // let map = new google.maps.Map(document.getElementById(this.getId()), {
+      //   fullscreenControl: false,
+      //   zoom: 8,
+      //   center: { lat: 50, lng: 50 },
+      //   gestureHandling: "cooperative",
+      // });
+      let mapCenter = [41.96063650000001,-75.78459749999999] // for now...
+      let osMap = L.map(this.getId(), {preferCanvas: true
+      }).setView(mapCenter,6)
+      let tileLayer = L.tileLayer('https://api.maptiler.com/maps/basic/{z}/{x}/{y}.png?key=vgYeUXLEg9nfjeVPRVwr', {
+      attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
       });
+      tileLayer.addTo(osMap);
     }
     catch(e)
     {
