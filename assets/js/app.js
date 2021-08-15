@@ -139,7 +139,6 @@ function refreshTiles(){
   {
    vs.refresh()
   }
- 
 }
 
 $(".form-select").on("change", function () {

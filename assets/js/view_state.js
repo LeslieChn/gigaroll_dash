@@ -64,7 +64,6 @@ function Comma_Sep(a,vs_id) {
     if (i < a.length - 1) 
       s += ",";
   }
-
   return s;
 }
 
@@ -375,12 +374,6 @@ class View_State
   {
     try
     {
-      // let map = new google.maps.Map(document.getElementById(this.getId()), {
-      //   fullscreenControl: false,
-      //   zoom: 8,
-      //   center: { lat: 50, lng: 50 },
-      //   gestureHandling: "cooperative",
-      // });
       let mapCenter = [41.96063650000001,-75.78459749999999] // for now...
       let osMap = L.map(this.getId(), {preferCanvas: true
       }).setView(mapCenter,6)
@@ -724,7 +717,7 @@ class View_State
 
   }
 
-  async countymap()
+  async setCountymap(mapDiv,legendDiv)
   {
     let result = await this.getCountyData();
 
@@ -740,9 +733,7 @@ class View_State
     let num_colors = 12;
     let geoScope = null;
     let scheme = this.getColorScheme();
-    var tooltipDiv = d3.select("#d3map").append("div")
-    .attr("class", "tooltip")
-    .style("opacity", 0);
+    var tooltipDiv;
     let name_from_state_code =
     { "09": "CT", "36": "NY", "34": "NJ", "25": "MA" }
 
@@ -786,10 +777,9 @@ class View_State
         .domain(domain)
         .range(colors);
 
-    var width = $(`#${this.getId()}`).parent().width(),
-        height = $(`#${this.getId()}`).parent().height(),
-        centered,
-        dd;
+    var width = $(`#${mapDiv}`).parent().width(),
+        height = $(`#${mapDiv}`).parent().height(),
+        centered;
 
     if (first_map_draw)
     {
@@ -801,11 +791,15 @@ class View_State
           .geoPath() // updated for d3 v4
           .projection(projection);
 
-      d3.select(`#${this.getId()}`)
+      d3.select(`#${mapDiv}`)
       .html("")
+     
+      tooltipDiv = d3.select(`#${mapDiv}`).append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
 
       svg = d3
-          .select(`#${this.getId()}`)
+          .select(`#${mapDiv}`)
           .append("svg")
           .attr("width", width)
           .attr("height", height)
@@ -820,10 +814,6 @@ class View_State
       
       g = svg.append("g");
     }
-
-
-
-    
     d3.json("./assets/data/map_us_counties.json", function (error, us)
     {
         if (error) throw error;
@@ -856,7 +846,6 @@ class View_State
             .attr("class", "mesh")
             .attr("d", path);
 
-
         g.append("g")
             .attr("class", "counties")
             .selectAll("path")
@@ -878,8 +867,9 @@ class View_State
             })
             .on("click", mapClicked)
             .on("mouseover", hovered)
-            // .on("mousemove", moved)
-            // .on("mouseout", mouseOuted);
+            .on("mousemove", moved)
+            .on("mouseout", mouseOuted);
+
           g.append("path")
               .attr("class", "county-borders")
               .attr(
@@ -896,6 +886,8 @@ class View_State
                       })
                   )
           );
+          showLegend(color, m1, m2)
+
           function mapClicked(d) {
             centered = centered !== d && d;
             console.log(d)
@@ -924,6 +916,103 @@ class View_State
                return interpolator;
             });
           }
+
+          function showLegend(color, min, max)
+          {
+              d3.select(`#${legendDiv}`).html('');
+          
+              var svg = d3.select("svg");
+          
+              let n_divs = color.range().length;
+          
+              var client_width = 100
+              let legend_width = client_width / 3
+              let left_margin = legend_width
+              let rect_width = legend_width / n_divs
+
+              let rect_idx = 0;
+              let rect_id = 0;
+              var client_height = document.getElementById(legendDiv).clientWidth
+              let legend_height = client_height / 3
+              let top_margin = legend_height
+              let rect_height = legend_height / n_divs
+
+
+              // let rectPos = (i) => left_margin + i * rect_width;
+              let rectPos = (i) => top_margin + i * rect_height;
+          
+              var g = svg.append("g")
+                  .attr("class", "key")
+                  .attr("transform", "translate(0,30)");
+          
+              g.selectAll("rect")
+                  .data(color.range().map((d) => rect_idx++ ) )
+                  .enter().append("rect")
+                  .attr("height", 12)
+                  .attr("x", d => 0)
+                  .attr("y", d => rectPos(d))
+                  .attr("width", rect_width)
+                  .attr("fill", function (d) { return color.range()[d] })
+                  .attr("id", d => `rect_${rect_id++}`)
+          
+              // let toolbar = w2ui.layout.get('top').toolbar
+              // let id = toolbar.get("values").selected
+              // let text = toolbar.get(`values:${id}`).text
+          
+              g.append("text")
+                  .attr("id", "caption")
+                  .attr("x", -200) 
+                  .attr("y", 12)
+                  .attr("fill", "#000")
+                  .attr("text-anchor", "start")
+                  .attr("font-weight", "bold")
+                  .text("country map for now");
+          
+              let text_pixels = document.getElementById("caption").getComputedTextLength()
+              g.select("#caption")
+                  .attr("x", left_margin - text_pixels - 20);
+          
+              // Create the tickmarks
+              let vals = [[min,0]]
+              for (let j = 1; j < 4; ++j)
+              {
+                  //let idx = Math.floor(j * n_divs / 4)
+                  let val_idx = Math.floor(j * (color.domain().length) / 4);
+                  let val = color.domain()[val_idx]
+                  let idx = color.range().indexOf(color(val))
+                  vals.push([val, idx]);
+              }
+              vals.push([max, n_divs])
+          
+              for (let val of vals)
+              {
+                  g.append("text")
+                      .attr("y", 30)
+                      .attr("x", rectPos(val[1]))
+                      .attr("fill", "#000")
+                      .attr("style", "font-size: smaller")
+                      .text(Math.round(10*val[0])/10);
+              }
+          
+              for (let i = 0; i <= n_divs; ++i)
+              {
+                  let width = 1, height = 15;
+                  if (i % 4 == 0)
+                  {
+                      width = 2;
+                      height = 18;
+                  }
+                  g.append('line')
+                      .style("stroke", "black")
+                      .style("stroke-width", width)
+                      .attr("x1", rectPos(i))
+                      .attr("y1", 0)
+                      .attr("x2", rectPos(i) )
+                      .attr("y2", height); 
+              }
+                
+          }
+
           function hovered(d)
           { 
             let code = d.id.substring(0, 2)
@@ -951,19 +1040,63 @@ class View_State
             //     .attr("x2", x + width)
             //     .attr("y2", -5)
             //     .attr("style", `stroke:black;stroke-width:4`)  
-            console.log
             tooltipDiv
                 .style("opacity", 0.9);
             tooltipDiv.html(`${county} ${state} <br> ${value}`)
                 .style("left", (d3.event.layerX + 20) + "px")
                 .style("top", (d3.event.layerY + 20) + "px");
-          }      
+          }
+          function moved(d)
+          {
+            tooltipDiv
+                .style("left", (d3.event.layerX + 20) + "px")
+                .style("top", (d3.event.layerY + 20) + "px");
+          }
+          function mouseOuted(d)
+          {
+            tooltipDiv.style("opacity", 0);
+            // let code = d.id.substring(0, 2)
+            // let county = d.properties.name
+            // let value = county_data[code][county]
+            // let idx = color.range().indexOf(color(value))
+            // let rect_id = `#rect_${idx}`
+
+            //   let x = parseInt(d3.select(rect_id).attr("x"))
+            //   let height = parseInt(d3.select(rect_id).attr("height"))
+            //   let width = parseInt(d3.select(rect_id).attr("width"))
+
+            //   d3.select("#overline")
+            //       .remove();
+                
+            // d3.select(rect_id)
+            //     .attr("y", 0)
+            //     .attr("x", x + 5)
+            //     .attr("height", height - 10)
+            //     .attr("width", width - 10)
+            //    .attr("style", "stroke:black;stroke-width:0")
+
+          }
     });
     
     function mapReset(){
       console.log("reset")
-      ddddd
     }
+  }
+  async countymap(){
+    
+    let container = this.getId()
+    let legendDiv = container + "Legend"
+    let mapDiv = container + "Map"
+    $(`#${container}`).append(`
+    <div class="row" style="height: 100%">
+      <div id="${legendDiv}" class="col-2">
+          <p>${legendDiv}</p>
+      </div>
+      <div id="${mapDiv}" class="col-10">
+        <p>${mapDiv}</p>
+      </div>
+    </div>`)
+    this.setCountymap(mapDiv,legendDiv)
   }
   
 }//end of Class definition
