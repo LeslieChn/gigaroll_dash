@@ -777,8 +777,8 @@ class View_State
         .domain(domain)
         .range(colors);
 
-    var width = $(`#${mapDiv}`).parent().width(),
-        height = $(`#${mapDiv}`).parent().height(),
+    var width = $(`#${mapDiv}`).width(),
+        height = $(`#${mapDiv}`).height(),
         centered;
 
     if (first_map_draw)
@@ -808,8 +808,6 @@ class View_State
       svg
           .append("rect")
           .attr("class", "background")
-          .attr("width", width)
-          .attr("height", height)
           .on("click", mapReset);
       
       g = svg.append("g");
@@ -824,7 +822,7 @@ class View_State
         let county_filtered = county_features.filter((d) =>
             state_codes.has(d.id.substring(0, 2)));
 
-        projection.fitSize([width - 20, height - 20], geoScope);
+        projection.fitSize([width, height - 20], geoScope);
 
         g.selectAll("path")
             .data(states_filtered)
@@ -890,8 +888,6 @@ class View_State
 
           function mapClicked(d) {
             centered = centered !== d && d;
-            console.log(d)
-            console.log(centered)
       
             var paths = svg.selectAll("path")
               .classed("active", d => d === centered);
@@ -917,60 +913,63 @@ class View_State
             });
           }
 
-          function showLegend(color, min, max)
+          function showLegend(color, min, max,)
           {
-              d3.select(`#${legendDiv}`).html('');
-          
-              var svg = d3.select("svg");
-          
+                   
               let n_divs = color.range().length;
           
-              var client_width = 100
+              var client_width = document.getElementById(legendDiv).clientWidth
               let legend_width = client_width / 3
-              let left_margin = legend_width
+              let left_margin = client_width  /2  -20
               let rect_width = legend_width / n_divs
 
               let rect_idx = 0;
               let rect_id = 0;
-              var client_height = document.getElementById(legendDiv).clientWidth
-              let legend_height = client_height / 3
-              let top_margin = legend_height
+              var client_height = document.getElementById(legendDiv).clientHeight
+              let legend_height = client_height * 0.8 
+              let top_margin = client_height *0.1
               let rect_height = legend_height / n_divs
-
-
+              
+              var svg
+              svg =  d3.select(`#${legendDiv}`)
+              .html('')
+              .append("svg")
+              .attr("width", client_width)
+              .attr("height", client_height);
               // let rectPos = (i) => left_margin + i * rect_width;
               let rectPos = (i) => top_margin + i * rect_height;
           
               var g = svg.append("g")
                   .attr("class", "key")
-                  .attr("transform", "translate(0,30)");
+                  .attr("transform", "translate(0,0)");
           
               g.selectAll("rect")
                   .data(color.range().map((d) => rect_idx++ ) )
                   .enter().append("rect")
-                  .attr("height", 12)
-                  .attr("x", d => 0)
+                  .attr("height", rect_height)
+                  .attr("x", left_margin)
                   .attr("y", d => rectPos(d))
-                  .attr("width", rect_width)
+                  .attr("width", 20)
                   .attr("fill", function (d) { return color.range()[d] })
                   .attr("id", d => `rect_${rect_id++}`)
           
               // let toolbar = w2ui.layout.get('top').toolbar
               // let id = toolbar.get("values").selected
               // let text = toolbar.get(`values:${id}`).text
+              // let text = "country map for now "
           
-              g.append("text")
-                  .attr("id", "caption")
-                  .attr("x", -200) 
-                  .attr("y", 12)
-                  .attr("fill", "#000")
-                  .attr("text-anchor", "start")
-                  .attr("font-weight", "bold")
-                  .text("country map for now");
+              // g.append("text")
+              //     .attr("id", "caption")
+              //     .attr("x", -200) 
+              //     .attr("y", 12)
+              //     .attr("fill", "#000")
+              //     .attr("text-anchor", "start")
+              //     .attr("font-weight", "bold")
+              //     .text("country map for now");
           
-              let text_pixels = document.getElementById("caption").getComputedTextLength()
-              g.select("#caption")
-                  .attr("x", left_margin - text_pixels - 20);
+              // let text_pixels = document.getElementById("caption").getComputedTextLength()
+              // g.select("#caption")
+              //     .attr("x", left_margin - text_pixels - 20);
           
               // Create the tickmarks
               let vals = [[min,0]]
@@ -987,28 +986,29 @@ class View_State
               for (let val of vals)
               {
                   g.append("text")
-                      .attr("y", 30)
-                      .attr("x", rectPos(val[1]))
+                      .attr("y", rectPos(val[1]) + 3)
+                      .attr("x", left_margin + 30)
+                      .attr("class", "ldegree")
                       .attr("fill", "#000")
-                      .attr("style", "font-size: smaller")
+                      .attr("style", "font-size: 60%")
                       .text(Math.round(10*val[0])/10);
               }
           
               for (let i = 0; i <= n_divs; ++i)
               {
-                  let width = 1, height = 15;
+                  let width = 20, height = 1;
                   if (i % 4 == 0)
                   {
-                      width = 2;
-                      height = 18;
+                      width = 22;
+                      height = 2;
                   }
                   g.append('line')
                       .style("stroke", "black")
-                      .style("stroke-width", width)
-                      .attr("x1", rectPos(i))
-                      .attr("y1", 0)
-                      .attr("x2", rectPos(i) )
-                      .attr("y2", height); 
+                      .style("stroke-width", height)
+                      .attr("x1", left_margin)
+                      .attr("y1", rectPos(i))
+                      .attr("x2", left_margin + width)
+                      .attr("y2", rectPos(i)); 
               }
                 
           }
@@ -1022,58 +1022,49 @@ class View_State
       
             let county = d.properties.name
             let value = county_data[code][county]
-            // let idx = color.range().indexOf(color(value))
-            // let rect_id = `#rect_${idx}`
-      
-            // let x = parseInt(d3.select(rect_id).attr("x"))
-            // let height = parseInt(d3.select(rect_id).attr("height"))
-            // let width = parseInt(d3.select(rect_id).attr("width"))
+            let idx = color.range().indexOf(color(value))
+            let rect_id = `#rect_${idx}`
+            let lx = parseInt(d3.select(rect_id).attr("x"))
+            let ly = parseInt(d3.select(rect_id).attr("y"))
+            let height = parseInt(d3.select(rect_id).attr("height"))
             
-            // var g = svg.append("g")
-            // .attr("transform", "translate(0,40)");
-            
-            // d3.select(".key")
-            //     .append("line")   
-            //     .attr("id", "overline")
-            //     .attr("x1", x)
-            //     .attr("y1", -5)
-            //     .attr("x2", x + width)
-            //     .attr("y2", -5)
-            //     .attr("style", `stroke:black;stroke-width:4`)  
+            var g = svg.append("g")
+            .attr("transform", "translate(0,40)");
+        
+            d3.select(".key")
+                .append("line")   
+                .attr("id", "overline")
+                .attr("x1", lx)
+                .attr("y1", ly)
+                .attr("x2", lx)
+                .attr("y2", ly + height)
+                .attr("style", `stroke:black;stroke-width:2`)
+
             tooltipDiv
                 .style("opacity", 0.9);
             tooltipDiv.html(`${county} ${state} <br> ${value}`)
-                .style("left", (d3.event.layerX + 20) + "px")
-                .style("top", (d3.event.layerY + 20) + "px");
+                .style("left", (d3.event.layerX) + "px")
+                .style("top", (d3.event.layerY ) + "px");
+
+            console.log(d3.event)
+
+            console.log(tooltipDiv._groups[0][0].style.left, " ", tooltipDiv._groups[0][0].style.top)
           }
+          
           function moved(d)
           {
             tooltipDiv
-                .style("left", (d3.event.layerX + 20) + "px")
-                .style("top", (d3.event.layerY + 20) + "px");
+                .style("left", (d3.event.layerX ) + "px")
+                .style("top", (d3.event.layerY ) + "px");
           }
           function mouseOuted(d)
           {
             tooltipDiv.style("opacity", 0);
-            // let code = d.id.substring(0, 2)
-            // let county = d.properties.name
-            // let value = county_data[code][county]
-            // let idx = color.range().indexOf(color(value))
-            // let rect_id = `#rect_${idx}`
 
-            //   let x = parseInt(d3.select(rect_id).attr("x"))
-            //   let height = parseInt(d3.select(rect_id).attr("height"))
-            //   let width = parseInt(d3.select(rect_id).attr("width"))
 
-            //   d3.select("#overline")
-            //       .remove();
+              d3.select("#overline")
+                  .remove();
                 
-            // d3.select(rect_id)
-            //     .attr("y", 0)
-            //     .attr("x", x + 5)
-            //     .attr("height", height - 10)
-            //     .attr("width", width - 10)
-            //    .attr("style", "stroke:black;stroke-width:0")
 
           }
     });
@@ -1087,13 +1078,11 @@ class View_State
     let container = this.getId()
     let legendDiv = container + "Legend"
     let mapDiv = container + "Map"
-    $(`#${container}`).append(`
+    $(`#${container}`).html(`
     <div class="row" style="height: 100%">
-      <div id="${legendDiv}" class="col-2">
-          <p>${legendDiv}</p>
+      <div id="${legendDiv}" class="col-2 p-0" style="background-color: #ddd; border-style: solid;">
       </div>
-      <div id="${mapDiv}" class="col-10">
-        <p>${mapDiv}</p>
+      <div id="${mapDiv}" class="col-10 d-flex">
       </div>
     </div>`)
     this.setCountymap(mapDiv,legendDiv)
