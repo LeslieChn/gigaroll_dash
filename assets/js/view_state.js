@@ -323,7 +323,7 @@ class View_State
                 </div>
               </div>
             </div>
-        </div>
+          </div>
         </div>
          <div class="card-body p-3">
             <${this.state.view_type=='chart'?'canvas':'div'} id="${this.getId()}" class="content" style="width:100%; height:${cfg.height};">
