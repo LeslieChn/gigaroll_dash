@@ -1082,7 +1082,8 @@ class View_State
     <div class="row" style="height: 100%">
       <div id="${legendDiv}" class="col-2 p-0" style="background-color: #ddd; border-style: solid;">
       </div>
-      <div id="${mapDiv}" class="col-10 d-flex">
+      <div id="${mapDiv}-column" class="col-10">
+        <div id="${mapDiv}" style='position:relative;height:100%;'></div>
       </div>
     </div>`)
     this.setCountymap(mapDiv,legendDiv)
