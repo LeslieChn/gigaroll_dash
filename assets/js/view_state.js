@@ -1043,8 +1043,8 @@ class View_State
             tooltipDiv
                 .style("opacity", 0.9);
             tooltipDiv.html(`${county} ${state} <br> ${value}`)
-                .style("left", (d3.event.layerX) + "px")
-                .style("top", (d3.event.layerY ) + "px");
+                .style("left", (d3.event.layerX + 20) + "px")
+                .style("top", (d3.event.layerY + 20) + "px");
 
             console.log(d3.event)
 
@@ -1054,8 +1054,8 @@ class View_State
           function moved(d)
           {
             tooltipDiv
-                .style("left", (d3.event.layerX ) + "px")
-                .style("top", (d3.event.layerY ) + "px");
+                .style("left", (d3.event.layerX + 20) + "px")
+                .style("top", (d3.event.layerY + 20) + "px");
           }
           function mouseOuted(d)
           {
