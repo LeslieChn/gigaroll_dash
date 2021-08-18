@@ -721,6 +721,8 @@ class View_State
   {
     let result = await this.getCountyData();
 
+    let instance = this
+
     let county_data = result.lut;
     let max_data = result.max;
     let min_data = result.min;
@@ -937,7 +939,7 @@ class View_State
               .attr("width", client_width)
               .attr("height", client_height);
               // let rectPos = (i) => left_margin + i * rect_width;
-              let rectPos = (i) => top_margin + i * rect_height;
+              let rectPos = (i) => top_margin + (n_divs - 1 - i) * rect_height;
           
               var g = svg.append("g")
                   .attr("class", "key")
@@ -956,20 +958,21 @@ class View_State
               // let toolbar = w2ui.layout.get('top').toolbar
               // let id = toolbar.get("values").selected
               // let text = toolbar.get(`values:${id}`).text
-              // let text = "country map for now "
+              let text = Comma_Sep(instance.state.request.measures,instance.state.id)
+              console.log(text)
+              g.append("text")
+                  .attr("id", "caption")
+                  .attr("x", 0) 
+                  .attr("y", 16)
+                  .attr("fill", "#000")
+                  .attr("text-anchor", "start")
+                  .attr("font-weight", "bold")
+                  .attr("style", "font-size:  1em")
+                  .text(text);
           
-              // g.append("text")
-              //     .attr("id", "caption")
-              //     .attr("x", -200) 
-              //     .attr("y", 12)
-              //     .attr("fill", "#000")
-              //     .attr("text-anchor", "start")
-              //     .attr("font-weight", "bold")
-              //     .text("country map for now");
-          
-              // let text_pixels = document.getElementById("caption").getComputedTextLength()
-              // g.select("#caption")
-              //     .attr("x", left_margin - text_pixels - 20);
+              let text_pixels = document.getElementById("caption").getComputedTextLength()
+              g.select("#caption")
+                  .attr("x", client_width  /  2 - text_pixels /2 );
           
               // Create the tickmarks
               let vals = [[min,0]]
@@ -986,7 +989,7 @@ class View_State
               for (let val of vals)
               {
                   g.append("text")
-                      .attr("y", rectPos(val[1]) + 3)
+                      .attr("y", rectPos(val[1] - 1) + 3)
                       .attr("x", left_margin + 30)
                       .attr("class", "ldegree")
                       .attr("fill", "#000")
@@ -1006,9 +1009,9 @@ class View_State
                       .style("stroke", "black")
                       .style("stroke-width", height)
                       .attr("x1", left_margin)
-                      .attr("y1", rectPos(i))
+                      .attr("y1", rectPos(i-1))
                       .attr("x2", left_margin + width)
-                      .attr("y2", rectPos(i)); 
+                      .attr("y2", rectPos(i-1)); 
               }
                 
           }
@@ -1034,9 +1037,9 @@ class View_State
             d3.select(".key")
                 .append("line")   
                 .attr("id", "overline")
-                .attr("x1", lx)
+                .attr("x1", lx-3)
                 .attr("y1", ly)
-                .attr("x2", lx)
+                .attr("x2", lx-3)
                 .attr("y2", ly + height)
                 .attr("style", `stroke:black;stroke-width:2`)
 
