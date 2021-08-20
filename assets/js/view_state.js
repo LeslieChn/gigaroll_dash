@@ -103,8 +103,16 @@ async function serverRequest(params) {
   var request = new Request(`http://127.0.0.1:55555/req?${p}`, { method: "GET" });
 
   const response = await fetch(request);
-  const json = await response.json();
-
+  try
+  {
+    console.log(response)
+    var json = await response.json();
+  }
+  catch
+  {
+    console.log(response)
+  }
+  
   return json;
 }
 
@@ -167,18 +175,36 @@ class View_State
     let params =  {
       qid: req.qid,
       dim: req.base_dim,
-      gby: Comma_Sep(req.groupbys, vs_id),
-      val: Comma_Sep(req.measures, vs_id),
+      //gby: Comma_Sep(req.groupbys, vs_id),
+      //val: Comma_Sep(req.measures, vs_id),
       // dim_filters: encodeURIComponent(getDimFilterStr(global_dim_filters)),
       // val_filters: getValFilterStr(global_val_filters)
     };
+
+    if ('groupbys' in req)
+      params.gby = Comma_Sep(req.groupbys, vs_id)
+     
+    if ('measures' in req)
+      params.val = Comma_Sep(req.measures, vs_id)
+
+    if ('dim_filters' in req)
+      params.dim_filters = Comma_Sep(req.dim_filters, vs_id)
+    
+    if ('val_filters' in req)
+      params.val_filters = Comma_Sep(req.val_filters, vs_id)
+
+    console.log(params)
     return params
   }
   async serverRequest()
   {
     let params=this.createRequestParams();
     let server_result = await serverRequest(params);
-
+    if (params.qid == "MD_RETR")
+    {
+      this.server_js=server_result
+      return
+    }
     let server_meta=server_result["meta"];
 
     if (server_meta.status != "OK"){
@@ -370,8 +396,13 @@ class View_State
    $(`#${this.getId()}`).append(`<h5 class="font-weight-bolder">Gigaroll Dashboard</h5><p class="text-lg">${this.state.text}</p>`)
   }
 
-  googlemap()
+  async geomap()
   {
+    await this.serverRequest()
+
+    let server_js=this.server_js
+    console.log(server_js)
+
     try
     {
       let mapCenter = [41.96063650000001,-75.78459749999999] // for now...
@@ -973,7 +1004,7 @@ class View_State
               let text_pixels = document.getElementById("caption").getComputedTextLength()
               g.select("#caption")
                   .attr("x", client_width  /  2 - text_pixels /2 );
-          
+
               // Create the tickmarks
               let vals = [[min,0]]
               for (let j = 1; j < 4; ++j)
