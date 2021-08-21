@@ -94,6 +94,7 @@ function chartColorGradient(canvas, bg_color){
 }
 
 async function serverRequest(params) {
+  console.log(params)
   let p = new URLSearchParams(params).toString();
   p = p.replaceAll('%2520', '%20')
 
@@ -245,6 +246,8 @@ class View_State
     this.maximized=true
     $(`#${this.getId()}-card`).attr('data-maximized', true)
     $('.content').height('65vh')
+    if (this.state.view_type == "geomap")
+      console.log("what is this:", this)
     this.refresh()
   }
   restore()
@@ -287,6 +290,7 @@ class View_State
         this_chart.update()
         break
       case 'treemap':
+      case 'geomap':
       case 'countymap':
         this.createContent()
         break
@@ -444,10 +448,11 @@ class View_State
     setMarkers()
     autoZoom()
 
-
     //////////////////////////////////////////// function session
+    
     function autoZoom(){
       $(map).ready(function () {
+        console.log("this is this:", this)
         osMap.invalidateSize()
         osMap.fitBounds(bounds)  
       });
@@ -472,6 +477,7 @@ class View_State
       }
       markers.addTo(osMap);
     }
+
   }
 
   async grid()

@@ -49,7 +49,7 @@ let req_geo =
 {
   qid: "MD_RETR",
   base_dim: 'property',
-  dim_filters: ["city:New York-NY"],
+  dim_filters: ["city:New Canaan-CT"],
   // val_filters: []
 }
 
