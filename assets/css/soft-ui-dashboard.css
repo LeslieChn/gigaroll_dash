@@ -21522,7 +21522,8 @@ hr.horizontal.gray-light {
 
 .main-content,
 .sidenav {
-  transition: all 0.2s ease-in-out;
+  transition: all 1s ease-in-out;
+  min-height: 1rem;
 }
 
 .sidenav {

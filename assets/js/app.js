@@ -45,6 +45,14 @@ let req5 =
   filters: []
 }
 
+let req_geo =
+{
+  qid: "MD_RETR",
+  base_dim: 'property',
+  dim_filters: ["city:New York-NY"],
+  // val_filters: []
+}
+
 let chart_def = [
   {
     yAxisID: "left",
@@ -84,7 +92,7 @@ let dropdowns2 = {
 
 let page_def=[
 [{id:'text', view_type:'text', text:"Here is an assortment of displays of your data. These will be updated in real-time as we receive new information. Feel free to peruse them to your heart's content!", tile_config: {header: `Welcome Ramin!`, subheader: `Daily Reports`, height:'300px', width:6}}],
-[{id:'map', view_type:'googlemap', tile_config: {header: `Map`, subheader: `Map of properties`, height:'300px', width:6}},
+[{id:'map', view_type:'geomap', request: req_geo, tile_config: {header: `Map`, subheader: `Map of properties`, height:'300px', width:6}},
 {id:'grid1', view_type:'grid', request: req3, dropdowns:dropdowns, tile_config: {header: `Grid`, subheader: `This is a Grid`, height:'300px', width:6, }}],
 // [{tile_config: {header: `this is row 0`, subheader: `this is column 0`}},
 // {tile_config: {header: `this is row 0`, subheader: `this is column 0`}}],
@@ -139,7 +147,6 @@ function refreshTiles(){
   {
    vs.refresh()
   }
- 
 }
 
 $(".form-select").on("change", function () {
