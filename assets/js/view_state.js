@@ -95,10 +95,13 @@ function chartColorGradient(canvas, bg_color){
 
 async function serverRequest(params) {
   let p = new URLSearchParams(params).toString();
+  p = p.replaceAll('%2520', '%20')
 
   // const api_url = `gserver/${p}`;
 
   // var request = new Request(api_url, { method: "POST" });
+
+  console.log("this is p:", p)
 
   var request = new Request(`http://127.0.0.1:55555/req?${p}`, { method: "GET" });
 
@@ -188,12 +191,12 @@ class View_State
       params.val = Comma_Sep(req.measures, vs_id)
 
     if ('dim_filters' in req)
-      params.dim_filters = Comma_Sep(req.dim_filters, vs_id)
+    params.dim_filters = encodeURI(Comma_Sep(req.dim_filters, vs_id))
+
     
     if ('val_filters' in req)
-      params.val_filters = Comma_Sep(req.val_filters, vs_id)
+      params.val_filters = encodeURI(Comma_Sep(req.val_filters, vs_id))
 
-    console.log(params)
     return params
   }
   async serverRequest()
@@ -401,13 +404,34 @@ class View_State
     await this.serverRequest()
 
     let server_js=this.server_js
-    console.log(server_js)
+    let coords = []
+    let lat, lng, markers, bounds, mapZoom;
+    let markerColor = "red"
+    var boostType = "balloon"
+    let max_lat = -999, max_lng = -999
+    let min_lat =  999, min_lng =  999
+    for (const data of server_js.data)
+    {
+      lat = parseInt(data[12]) /1e6 
+      lng = parseInt(data[13]) /1e6
+      max_lat = (lat>max_lat)? lat : max_lat
+      max_lng = (lng>max_lng)? lng : max_lng
+      min_lat = (lat<min_lat)? lat : min_lat
+      min_lng = (lng<min_lng)? lng : min_lng
+      coords.push([lat,lng])
+    }
+    var center_lat = (max_lat + min_lat)/2
+    var center_lng = (max_lng + min_lng)/2
+
+    var map_center = [center_lat, center_lng]
+    let minPoint = L.latLng(min_lat,min_lng)
+    let maxPoint = L.latLng(max_lat,max_lng)
+    bounds = L.latLngBounds(minPoint,maxPoint)
 
     try
     {
-      let mapCenter = [41.96063650000001,-75.78459749999999] // for now...
-      let osMap = L.map(this.getId(), {preferCanvas: true
-      }).setView(mapCenter,6)
+      var osMap = L.map(this.getId(), {preferCanvas: true
+      }).setView(map_center,6)
       let tileLayer = L.tileLayer('https://api.maptiler.com/maps/basic/{z}/{x}/{y}.png?key=vgYeUXLEg9nfjeVPRVwr', {
       attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
       });
@@ -416,6 +440,37 @@ class View_State
     catch(e)
     {
       console.log(e)
+    }
+    setMarkers()
+    autoZoom()
+
+
+    //////////////////////////////////////////// function session
+    function autoZoom(){
+      $(map).ready(function () {
+        osMap.invalidateSize()
+        osMap.fitBounds(bounds)  
+      });
+    }
+
+    function setMarkers() {
+      if (markers)
+        osMap.removeLayer(markers)
+      markers = L.featureGroup()
+      for (let coord of coords) {
+        L.circleMarker(coord, {
+            fillColor: markerColor,
+            fillOpacity: 1,
+            stroke: true,
+            color: 'white',
+            weight: 1,
+            boostType: boostType,
+            boostScale: 1,
+            boostExp: 0,
+            radius: 6
+        }).addTo(markers);
+      }
+      markers.addTo(osMap);
     }
   }
 
