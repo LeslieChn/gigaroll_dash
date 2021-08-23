@@ -94,7 +94,6 @@ function chartColorGradient(canvas, bg_color){
 }
 
 async function serverRequest(params) {
-  console.log(params)
   let p = new URLSearchParams(params).toString();
   p = p.replaceAll('%2520', '%20')
 
@@ -102,14 +101,11 @@ async function serverRequest(params) {
 
   // var request = new Request(api_url, { method: "POST" });
 
-  console.log("this is p:", p)
-
   var request = new Request(`http://127.0.0.1:55555/req?${p}`, { method: "GET" });
 
   const response = await fetch(request);
   try
   {
-    console.log(response)
     var json = await response.json();
   }
   catch
@@ -172,6 +168,7 @@ class View_State
     this.server_js=null
     this.maximized=false
   }
+
   createRequestParams()
   { 
     let req=this.state.request
@@ -245,9 +242,6 @@ class View_State
     $(`#${this.getId()}-box`).attr('class', 'col-lg-12')
     this.maximized=true
     $(`#${this.getId()}-card`).attr('data-maximized', true)
-    $('.content').height('65vh')
-    if (this.state.view_type == "geomap")
-      console.log("what is this:", this)
     this.refresh()
   }
   restore()
@@ -289,8 +283,10 @@ class View_State
         });
         this_chart.update()
         break
-      case 'treemap':
       case 'geomap':
+        this.autoZoom()
+        break
+      case 'treemap':     
       case 'countymap':
         this.createContent()
         break
@@ -403,9 +399,26 @@ class View_State
    $(`#${this.getId()}`).append(`<h5 class="font-weight-bolder">Gigaroll Dashboard</h5><p class="text-lg">${this.state.text}</p>`)
   }
 
+  autoZoom()
+  {
+    function callback(instance)
+    {       
+      instance.object_instance.invalidateSize()
+      instance.object_instance.fitBounds(instance.bounds) 
+    }
+    $(this.getId()).ready( callback.bind(null, this));
+  }
   async geomap()
   {
     await this.serverRequest()
+    
+    if (this.object_instance)
+    {
+      console.log("instance is:", this.object_instance)
+      // this.object_instance.off()
+      // this.object_instance.remove()
+      console.log("instance is removed:", this.object_instance)
+    }
 
     let server_js=this.server_js
     let coords = []
@@ -414,6 +427,7 @@ class View_State
     var boostType = "balloon"
     let max_lat = -999, max_lng = -999
     let min_lat =  999, min_lng =  999
+    
     for (const data of server_js.data)
     {
       lat = parseInt(data[12]) /1e6 
@@ -430,33 +444,36 @@ class View_State
     var map_center = [center_lat, center_lng]
     let minPoint = L.latLng(min_lat,min_lng)
     let maxPoint = L.latLng(max_lat,max_lng)
-    bounds = L.latLngBounds(minPoint,maxPoint)
+    this.bounds = L.latLngBounds(minPoint,maxPoint)
 
     try
     {
-      var osMap = L.map(this.getId(), {preferCanvas: true
-      }).setView(map_center,6)
+      var osMap = L.map(this.getId(), 
+      {preferCanvas: true,
+       minZoom: 1,
+       maxZoom: 16,
+      })
       let tileLayer = L.tileLayer('https://api.maptiler.com/maps/basic/{z}/{x}/{y}.png?key=vgYeUXLEg9nfjeVPRVwr', {
       attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
       });
       tileLayer.addTo(osMap);
+      this.object_instance = osMap
     }
     catch(e)
     {
       console.log(e)
     }
     setMarkers()
-    autoZoom()
+    this.autoZoom()
 
     //////////////////////////////////////////// function session
-    
-    function autoZoom(){
-      $(map).ready(function () {
-        console.log("this is this:", this)
-        osMap.invalidateSize()
-        osMap.fitBounds(bounds)  
-      });
-    }
+    // function autoZoom(){
+    //   $(map).ready(function () {
+    //     console.log("here is the map:",map)
+    //     osMap.invalidateSize()
+    //     osMap.fitBounds(bounds)  
+    //   });
+    // }
 
     function setMarkers() {
       if (markers)
@@ -902,7 +919,7 @@ class View_State
       svg
           .append("rect")
           .attr("class", "background")
-          .on("click", mapReset);
+          // .on("click", mapReset);
       
       g = svg.append("g");
     }
@@ -915,6 +932,7 @@ class View_State
         let county_features = topojson.feature(us, us.objects.counties).features;
         let county_filtered = county_features.filter((d) =>
             state_codes.has(d.id.substring(0, 2)));
+        let county_boarder = {type: "GeometryCollection","geometries:":county_filtered}
 
         projection.fitSize([width, height - 20], geoScope);
 
@@ -964,20 +982,10 @@ class View_State
 
           g.append("path")
               .attr("class", "county-borders")
-              .attr(
-                  "d",
-                  path(
-                      topojson.mesh(us, us.objects.counties, function (a, b)
-                      {
-                          let aCode = a.id.substring(0, 2);
-                          let bCode = b.id.substring(0, 2);
-
-                          if (!state_codes.has(aCode) || !state_codes.has(bCode))
-                              return false;
-                          else return a !== b;
-                      })
-                  )
-          );
+              // console.log(us)
+              .datum(topojson.mesh(us, us.objects.counties, (d) =>
+              state_codes.has(d.id.substring(0, 2))))
+              .attr("d", path)
           showLegend(color, m1, m2)
 
           function mapClicked(d) {
@@ -999,6 +1007,8 @@ class View_State
                 .translate(interpolateTranslate(t));
               paths.attr("d", path);
             }; 
+
+            
         
             d3.transition()
               .duration(750)
@@ -1051,7 +1061,6 @@ class View_State
               // let id = toolbar.get("values").selected
               // let text = toolbar.get(`values:${id}`).text
               let text = Comma_Sep(instance.state.request.measures,instance.state.id)
-              console.log(text)
               g.append("text")
                   .attr("id", "caption")
                   .attr("x", 0) 
@@ -1140,10 +1149,6 @@ class View_State
             tooltipDiv.html(`${county} ${state} <br> ${value}`)
                 .style("left", (d3.event.layerX + 20) + "px")
                 .style("top", (d3.event.layerY + 20) + "px");
-
-            console.log(d3.event)
-
-            console.log(tooltipDiv._groups[0][0].style.left, " ", tooltipDiv._groups[0][0].style.top)
           }
           
           function moved(d)
