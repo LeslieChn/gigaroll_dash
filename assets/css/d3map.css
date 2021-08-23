@@ -28,7 +28,7 @@
   
   .county-borders {
       fill: none;
-      stroke: #ffffff;
+      stroke: #808080;
       stroke-width: 0.5px;
       stroke-linejoin: round;
       stroke-linecap: round;
